@@ -1,1 +1,9 @@
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
 
+  [[services.ports]]
+    port = 80
+
+[[vm]]
+  private_network = true
