@@ -50,20 +50,26 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           script: |
             echo "Deployment starting..."
-            
-            # ✅ Set correct path (change this if your repo is in a different location)
-            PROJECT_DIR="$HOME/fastapi-book-project"
-            
-            # ✅ Clone repo if missing
+
+            # ✅ Set project directory
+            PROJECT_DIR="/var/www/fastapi-book-project"
+
+            # ✅ Check if project directory exists
             if [ ! -d "$PROJECT_DIR" ]; then
-              echo "Project directory not found. Cloning repository..."
-              git clone git@github.com:your-username/fastapi-book-project.git $PROJECT_DIR
+              echo "Project directory not found. Creating it..."
+              sudo mkdir -p $PROJECT_DIR
+              sudo chown $USER:$USER $PROJECT_DIR
             fi
 
             # ✅ Navigate to project directory
             cd $PROJECT_DIR || { echo "Failed to cd into project directory"; exit 1; }
 
+            # ✅ Ensure correct SSH permissions
+            chmod 700 ~/.ssh
+            chmod 600 ~/.ssh/authorized_keys
+
             # ✅ Pull latest changes
+            git fetch --all
             git reset --hard origin/main
             git pull origin main
 
