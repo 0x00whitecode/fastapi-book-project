@@ -1,4 +1,4 @@
-name: Deploy FastAPI App
+name: deploy
 
 on:
   push:
@@ -10,32 +10,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      # Ensure correct SSH permissions before deploying
       - name: Setup SSH Key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ip-172-26-15-169 >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Ensure Correct SSH Permissions on Server
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no white@ip-172-26-15-169 << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
             touch ~/.ssh/authorized_keys
             chmod 600 ~/.ssh/authorized_keys
           EOF
 
-      - name: Deploy to Server
-        run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no white@ip-172-26-15-169 << 'EOF'
+      # Deploy to server
+      - name: Deploy to Staging Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          script: |
             echo "Deployment starting..."
-            
+
             # Navigate to project directory
-            cd /var/www/fastapi-book-project || exit 1
+            cd hngx-stage2-fastapi-book-project || exit 1
+
+            # Ensure correct permissions
+            chmod 700 ~/.ssh
+            chmod 600 ~/.ssh/authorized_keys
 
             # Pull latest changes
             git fetch --all
@@ -43,19 +56,21 @@ jobs:
             git pull origin main
 
             # Setup virtual environment and install dependencies
-            python3 -m venv venv
-            source venv/bin/activate
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
+            python3 -m venv venv || exit 1
+            source venv/bin/activate || exit 1
+            python -m pip install --upgrade pip || exit 1
+            pip install -r requirements.txt || exit 1
 
             # Stop existing application if running
+            echo "Stopping existing application..."
             pkill -f "uvicorn" || echo "No existing process found"
+            echo "Application stopped successfully"
 
-            # Start application in the background
+            # Start application
+            echo "Starting application..."
             nohup uvicorn main:app --host 0.0.0.0 --port 5051 --reload > app.log 2>&1 &
 
-            # Restart Nginx
+            # Restart Nginx if necessary
             sudo systemctl restart nginx || echo "Failed to restart Nginx"
 
-            echo "Deployment successful!"
-          EOF
+            echo "Application started successfully"
