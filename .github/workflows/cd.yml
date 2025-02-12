@@ -34,7 +34,7 @@ jobs:
       # Step 5: Deploy the FastAPI application to the server
       - name: Deploy FastAPI application
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH private key as a GitHub secret
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}  # Add your SSH private key as a GitHub secret
           SERVER_IP: 52.35.34.186
         run: |
           echo "Deploying FastAPI application to $SERVER_IP..."
