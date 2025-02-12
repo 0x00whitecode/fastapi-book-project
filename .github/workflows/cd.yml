@@ -20,6 +20,15 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ip-172-26-15-169 >> ~/.ssh/known_hosts
 
+      - name: Set correct SSH permissions on server
+        run: |
+          ssh -o StrictHostKeyChecking=no white@ip-172-26-15-169 << 'EOF'
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            touch ~/.ssh/authorized_keys
+            chmod 600 ~/.ssh/authorized_keys
+          EOF
+
       - name: Deploy to Server
         run: |
           ssh -o StrictHostKeyChecking=no white@ip-172-26-15-169 << 'EOF'
@@ -42,7 +51,7 @@ jobs:
             # Stop existing application if running
             pkill -f "uvicorn" || echo "No existing process found"
 
-            # Start application without requiring sudo
+            # Start application in the background
             nohup uvicorn main:app --host 0.0.0.0 --port 5051 --reload > app.log 2>&1 &
 
             # Restart Nginx
