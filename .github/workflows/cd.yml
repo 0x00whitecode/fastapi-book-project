@@ -29,7 +29,7 @@ jobs:
       # ✅ Debug SSH Connection
       - name: Debug SSH
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -vvv ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "echo 'SSH connection successful'"
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -vvv ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "echo 'SSH connection successful'"
 
       # ✅ Deploy to Server
       - name: Deploy to Server
