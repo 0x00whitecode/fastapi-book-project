@@ -44,7 +44,7 @@ jobs:
             echo "Deployment starting..."
 
             # Navigate to project directory
-            cd hngx-stage2-fastapi-book-project || exit 1
+            cd fastapi-book-project || exit 1
 
             # Ensure correct permissions
             chmod 700 ~/.ssh
