@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: 3.11
 
-      # ✅ Fix SSH Key Formatting & Setup
+      # ✅ Setup SSH Key
       - name: Setup SSH Key
         run: |
           mkdir -p ~/.ssh
@@ -26,7 +26,7 @@ jobs:
           ssh-add ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      # ✅ Debug SSH Connection (Verify Key Authentication)
+      # ✅ Debug SSH Connection
       - name: Debug SSH
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -vvv ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "echo 'SSH connection successful'"
@@ -41,8 +41,8 @@ jobs:
             chmod 600 ~/.ssh/authorized_keys
           EOF
 
-      # ✅ Deploy to Server
-      - name: Deploy to Staging Server
+      # ✅ Deploy to Server (Fixing Missing Directory Issue)
+      - name: Deploy to Server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -50,35 +50,33 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           script: |
             echo "Deployment starting..."
+            
+            # ✅ Set correct path (change this if your repo is in a different location)
+            PROJECT_DIR="$HOME/fastapi-book-project"
+            
+            # ✅ Clone repo if missing
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "Project directory not found. Cloning repository..."
+              git clone git@github.com:your-username/fastapi-book-project.git $PROJECT_DIR
+            fi
 
-            # Navigate to project directory
-            cd fastapi-book-project || exit 1
+            # ✅ Navigate to project directory
+            cd $PROJECT_DIR || { echo "Failed to cd into project directory"; exit 1; }
 
-            # Ensure correct permissions
-            chmod 700 ~/.ssh
-            chmod 600 ~/.ssh/authorized_keys
-
-            # Pull latest changes
-            git fetch --all
+            # ✅ Pull latest changes
             git reset --hard origin/main
             git pull origin main
 
-            # Setup virtual environment and install dependencies
-            python3 -m venv venv || exit 1
-            source venv/bin/activate || exit 1
-            python -m pip install --upgrade pip || exit 1
-            pip install -r requirements.txt || exit 1
+            # ✅ Setup virtual environment & install dependencies
+            python3 -m venv venv
+            source venv/bin/activate
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
 
-            # Stop existing application if running
-            echo "Stopping existing application..."
+            # ✅ Stop existing app if running
             pkill -f "uvicorn" || echo "No existing process found"
-            echo "Application stopped successfully"
 
-            # Start application
-            echo "Starting application..."
+            # ✅ Start FastAPI app
             nohup uvicorn main:app --host 0.0.0.0 --port 5051 --reload > app.log 2>&1 &
 
-            # Restart Nginx if necessary
-            sudo systemctl restart nginx || echo "Failed to restart Nginx"
-
-            echo "Application started successfully"
+            echo "Deployment complete!"
