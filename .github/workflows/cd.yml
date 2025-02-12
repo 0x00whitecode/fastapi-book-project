@@ -16,11 +16,11 @@ jobs:
         with:
           fetch-depth: 0  # Ensure full commit history for merging
 
-      # Step 2: Configure Git
-      - name: Configure Git
-        run: |
-          git config --global user.name "hng12-devbot"
-          git config --global user.email "hng12-devbot@users.noreply.github.com"
+      # # Step 2: Configure Git
+      # - name: Configure Git
+      #   run: |
+      #     git config --global user.name "hng12-devbot"
+      #     git config --global user.email "hng12-devbot@users.noreply.github.com"
 
       # Step 3: Merge develop into main
       - name: Merge develop into main
