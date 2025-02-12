@@ -8,10 +8,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
       - uses: actions/checkout@v4
-
+      
       - uses: actions/setup-python@v4
         with:
           python-version: 3.11
@@ -31,17 +31,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -vvv ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "echo 'SSH connection successful'"
 
-      # ✅ Ensure Correct SSH Permissions on the Server
-      - name: Ensure Correct SSH Permissions on Server
-        run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            mkdir -p ~/.ssh
-            chmod 700 ~/.ssh
-            touch ~/.ssh/authorized_keys
-            chmod 600 ~/.ssh/authorized_keys
-          EOF
-
-      # ✅ Deploy to Server (Fixing Missing Directory Issue)
+      # ✅ Deploy to Server
       - name: Deploy to Server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -50,39 +40,62 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           script: |
             echo "Deployment starting..."
-
+            
             # ✅ Set project directory
             PROJECT_DIR="/var/www/fastapi-book-project"
-
-            # ✅ Check if project directory exists
+            
+            # ✅ Clone repository if not exists
             if [ ! -d "$PROJECT_DIR" ]; then
-              echo "Project directory not found. Creating it..."
-              sudo mkdir -p $PROJECT_DIR
-              sudo chown $USER:$USER $PROJECT_DIR
+              echo "Project directory not found. Cloning repository..."
+              git clone https://github.com/0x00whitecode/fastapi-book-project.git $PROJECT_DIR
             fi
-
+            
             # ✅ Navigate to project directory
             cd $PROJECT_DIR || { echo "Failed to cd into project directory"; exit 1; }
-
-            # ✅ Ensure correct SSH permissions
-            chmod 700 ~/.ssh
-            chmod 600 ~/.ssh/authorized_keys
-
+            
             # ✅ Pull latest changes
             git fetch --all
             git reset --hard origin/main
             git pull origin main
-
+            
             # ✅ Setup virtual environment & install dependencies
-            python3 -m venv venv
-            source venv/bin/activate
-            python -m pip install --upgrade pip
-            pip install -r requirements.txt
-
-            # ✅ Stop existing app if running
-            pkill -f "uvicorn" || echo "No existing process found"
-
+            python3 -m venv venv || exit 1
+            source venv/bin/activate || exit 1
+            python -m pip install --upgrade pip || exit 1
+            pip install -r requirements.txt || exit 1
+            
+            # ✅ Stop existing application if running
+            echo "Stopping existing application..."
+            killall uvicorn || echo "No existing process found"
+            echo "Application stopped successfully"
+            
             # ✅ Start FastAPI app
-            nohup uvicorn main:app --host 0.0.0.0 --port 5051 --reload > app.log 2>&1 &
+            echo "Starting application..."
+            nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
+            echo "Application started successfully"
+            
+            # ✅ Configure Nginx
+            echo 'server {
+                listen 80;
+                server_name localhost;
+                
+                location / {
+                    proxy_pass http://127.0.0.1:8000;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                }
 
-            echo "Deployment complete!"
+                location /static/ {
+                    alias /var/www/fastapi-book-project/static/;
+                }
+            }' | sudo tee /etc/nginx/sites-available/fastapi
+            
+            # ✅ Enable Nginx configuration
+            sudo ln -sf /etc/nginx/sites-available/fastapi /etc/nginx/sites-enabled/
+            
+            # ✅ Test and restart Nginx
+            sudo nginx -t && sudo systemctl restart nginx
+            
+            echo "Nginx configuration updated and restarted!"
