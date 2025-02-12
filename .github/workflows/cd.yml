@@ -3,73 +3,71 @@ name: Continuous Deployment (CD) Pipeline
 on:
   push:
     branches:
-      - main  # Trigger the workflow on push to the main branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Increase timeout to 15 minutes to avoid failures
+    timeout-minutes: 15
 
     steps:
       # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Python
+      # Step 2: Set up SSH key
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan 52.35.34.186 >> ~/.ssh/known_hosts
+
+      # Step 3: Set up Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      # Step 3: Install dependencies
+      # Step 4: Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Step 4: Run tests (optional, but recommended)
+      # Step 5: Run tests
       - name: Run tests
         run: |
           pytest
 
-      # Step 5: Deploy the FastAPI application to the server
+      # Step 6: Deploy the FastAPI application to the server
       - name: Deploy FastAPI application
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH private key as a GitHub secret
           SERVER_IP: 52.35.34.186
         run: |
           echo "Deploying FastAPI application to $SERVER_IP..."
-          # Copy the application code to the server
           scp -o StrictHostKeyChecking=no -r . ubuntu@$SERVER_IP:/home/ubuntu/fastapi-app
-
-          # SSH into the server and set up the application
           ssh -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'EOF'
           cd /home/ubuntu/fastapi-app
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-          # Stop any existing FastAPI process
           pkill -f "uvicorn main:app" || true
-
-          # Start the FastAPI application using Uvicorn on port 5051
           nohup uvicorn main:app --host 0.0.0.0 --port 5051 > /dev/null 2>&1 &
           EOF
 
-      # Step 6: Configure and start Nginx as a reverse proxy
+      # Step 7: Configure and start Nginx as a reverse proxy
       - name: Set up Nginx
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH private key as a GitHub secret
           SERVER_IP: 52.35.34.186
         run: |
           echo "Setting up Nginx on $SERVER_IP..."
-          # Create the Nginx configuration file
           echo '
           server {
               listen 80;
-              server_name 52.35.34.186;  # Replace with your public IP or domain
+              server_name 52.35.34.186;
 
               location / {
-                  proxy_pass http://127.0.0.1:5051;  # Your FastAPI application running on Uvicorn
+                  proxy_pass http://127.0.0.1:5051;
                   proxy_set_header Host $host;
                   proxy_set_header X-Real-IP $remote_addr;
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -82,14 +80,10 @@ jobs:
               }
           }
           ' > nginx.conf
-
-          # Copy the Nginx configuration file to the server
           scp -o StrictHostKeyChecking=no nginx.conf ubuntu@$SERVER_IP:/home/ubuntu/nginx.conf
-
-          # SSH into the server and configure Nginx
           ssh -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'EOF'
           sudo cp /home/ubuntu/nginx.conf /etc/nginx/sites-available/fastapi-app
           sudo ln -sf /etc/nginx/sites-available/fastapi-app /etc/nginx/sites-enabled/
-          sudo nginx -t  # Test the Nginx configuration
+          sudo nginx -t
           sudo systemctl restart nginx
           EOF
