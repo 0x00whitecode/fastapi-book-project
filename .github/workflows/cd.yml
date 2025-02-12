@@ -20,9 +20,9 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ip-172-26-15-169 >> ~/.ssh/known_hosts
 
-      - name: Set correct SSH permissions on server
+      - name: Ensure Correct SSH Permissions on Server
         run: |
-          ssh -o StrictHostKeyChecking=no white@ip-172-26-15-169 << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no white@ip-172-26-15-169 << 'EOF'
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
             touch ~/.ssh/authorized_keys
@@ -31,9 +31,9 @@ jobs:
 
       - name: Deploy to Server
         run: |
-          ssh -o StrictHostKeyChecking=no white@ip-172-26-15-169 << 'EOF'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no white@ip-172-26-15-169 << 'EOF'
             echo "Deployment starting..."
-
+            
             # Navigate to project directory
             cd /var/www/fastapi-book-project || exit 1
 
