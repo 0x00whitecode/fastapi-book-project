@@ -1,42 +1,68 @@
-name: deploy
+name: Deploy FastAPI Application
+
 on:
   push:
     branches:
       - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: 3.11
-      # Deploy to server
+          python-version: "3.11"
+
+      - name: Set up SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Test SSH Connection
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -vvv ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "echo 'SSH connection successful'"
+
       - name: Deploy to Staging Server
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{secrets.SERVER_HOST}}
-          key: ${{secrets.SERVER_SSH_KEY}}
-          username: ${{secrets.SERVER_USERNAME}}
+          host: ${{ secrets.SERVER_HOST }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          username: ${{ secrets.SERVER_USERNAME }}
           script: |
-            echo "deployment starting..."
+            set -e  # Exit immediately if a command exits with a non-zero status
+
+            echo "Deployment starting..."
+
             # Navigate to project directory
-            cd hngx-stage2-fastapi-book-project
+            PROJECT_DIR="fastapi-book-project"
+            cd $PROJECT_DIR || { echo "Failed to cd into project directory"; exit 1; }
+
+            # Pull latest changes
             git fetch --all
+            git reset --hard origin/main
             git pull origin main
+
+            # Setup virtual environment & install dependencies
             python3 -m venv venv || exit 1
             source venv/bin/activate || exit 1
             python -m pip install --upgrade pip || exit 1
             pip install -r requirements.txt || exit 1
+
             # Stop existing application if running
             echo "Stopping existing application..."
-            killall uvicorn || echo "No existing process found"
+            pkill -f "uvicorn main:app" || echo "No existing process found"
             echo "Application stopped successfully"
-            # Start application
+
+            # Start FastAPI app
             echo "Starting application..."
             nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
             echo "Application started successfully"
-
-
-
-
