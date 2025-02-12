@@ -1,6 +1,52 @@
-- name: Setup SSH Key
-  run: |
-    mkdir -p ~/.ssh
-    echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
-    chmod 600 ~/.ssh/id_rsa
-    ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+name: Deploy FastAPI App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Server
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.SERVER_HOST }} << 'EOF'
+            echo "Deployment starting..."
+
+            # Navigate to project directory
+            cd /var/www/fastapi-book-project || exit 1
+
+            # Pull latest changes
+            git fetch --all
+            git reset --hard origin/main
+            git pull origin main
+
+            # Setup virtual environment and install dependencies
+            python3 -m venv venv
+            source venv/bin/activate
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+
+            # Stop existing application if running
+            pkill -f "uvicorn" || echo "No existing process found"
+
+            # Start application without requiring sudo
+            nohup uvicorn main:app --host 0.0.0.0 --port 5051 --reload > app.log 2>&1 &
+
+            # Restart Nginx without requiring sudo
+            systemctl restart nginx || echo "Failed to restart Nginx"
+
+            echo "Deployment successful!"
+          EOF
