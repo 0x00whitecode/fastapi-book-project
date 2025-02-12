@@ -3,11 +3,12 @@ name: Continuous Deployment (CD) Pipeline
 on:
   push:
     branches:
-      - main
+      - main  # Trigger the workflow on push to the main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # Increase timeout to 15 minutes to avoid failures
 
     steps:
       # Step 1: Checkout the repository
@@ -34,7 +35,7 @@ jobs:
       # Step 5: Deploy the FastAPI application to the server
       - name: Deploy FastAPI application
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}  # Add your SSH private key as a GitHub secret
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH private key as a GitHub secret
           SERVER_IP: 52.35.34.186
         run: |
           echo "Deploying FastAPI application to $SERVER_IP..."
@@ -46,6 +47,9 @@ jobs:
           cd /home/ubuntu/fastapi-app
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+          # Stop any existing FastAPI process
+          pkill -f "uvicorn main:app" || true
 
           # Start the FastAPI application using Uvicorn on port 5051
           nohup uvicorn main:app --host 0.0.0.0 --port 5051 > /dev/null 2>&1 &
