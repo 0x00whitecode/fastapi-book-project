@@ -1,26 +1,29 @@
 # Use an official Python runtime as a parent image
-FROM python:3.9-slim
+FROM python:3.9-slim as builder
 
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
 # Copy the requirements file into the container
 COPY requirements.txt .
 
-# Install any needed packages specified in requirements.txt
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the current directory contents into the container at /app
+# Copy the rest of the application code
 COPY . .
 
-# Install Nginx
-RUN apt-get update && apt-get install -y nginx
+# Use an official Nginx image as the base image for the final stage
+FROM nginx:alpine
 
-# Copy Nginx configuration
-COPY nginx/conf.d/fastapi-app.conf /etc/nginx/conf.d/fastapi-app.conf
+# Copy the Nginx configuration file
+COPY nginx.conf /etc/nginx/nginx.conf
 
-# Expose ports
-EXPOSE 80 8000
+# Copy the FastAPI app from the builder stage
+COPY --from=builder /app /app
+
+# Expose port 80 for Nginx
+EXPOSE 80
 
 # Start Nginx and FastAPI
-CMD service nginx start && uvicorn main:app --host 0.0.0.0 --port 8000
+CMD nginx -g "daemon off;" & uvicorn app.main:app --host 0.0.0.0 --port 8000

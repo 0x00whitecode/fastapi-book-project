@@ -1,9 +1,12 @@
-[[services]]
-  internal_port = 8080
-  protocol = "tcp"
+# fly.toml
+app = "basex"  # Replace with your desired Fly.io app name
 
-  [[services.ports]]
-    port = 80
+[build]
+  image = "whitecod/fastapi-book-project"  # Replace with your Docker image name
 
-[[vm]]
-  private_network = true
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
