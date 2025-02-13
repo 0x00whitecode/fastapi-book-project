@@ -37,25 +37,14 @@ jobs:
       - name: Install Fly.io CLI
         run: |
           curl -L https://fly.io/install.sh | sh
-          echo "$HOME/.fly/bin" >> $GITHUB_PATH
+          echo "$HOME/.fly/bin" >> $GITHUB_ENV
           export PATH="$HOME/.fly/bin:$PATH"
 
       - name: Log in to Fly.io
-        run: |
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl auth login --access-token ${{ secrets.FLY_API_TOKEN }}
-
-      - name: Create Fly.io App (if it doesn't exist)
-        run: |
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl apps create basex --owner modibbo-adama-university-yola || echo "App already exists or another error occurred"
+        run: flyctl auth token --access-token ${{ secrets.FLY_API_TOKEN }}
 
       - name: Deploy to Fly.io
-        run: |
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl deploy --remote-only --org modibbo-adama-university-yola
+        run: flyctl deploy --app basex --remote-only --org modibbo-adama-university-yola
 
       - name: Verify Deployment
-        run: |
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl status --app basex --org modibbo-adama-university-yola
+        run: flyctl status --app basex
