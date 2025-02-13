@@ -38,9 +38,14 @@ jobs:
         run: |
           curl -L https://fly.io/install.sh | sh
           echo "$HOME/.fly/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.fly/bin:$PATH"  # Explicitly add to PATH
 
       - name: Log in to Fly.io
-        run: flyctl auth login --access-token ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          export PATH="$HOME/.fly/bin:$PATH"  # Ensure flyctl is in PATH
+          flyctl auth login --access-token ${{ secrets.FLY_API_TOKEN }}
 
       - name: Deploy to Fly.io
-        run: flyctl deploy --remote-only
+        run: |
+          export PATH="$HOME/.fly/bin:$PATH"  # Ensure flyctl is in PATH
+          flyctl deploy --remote-only
