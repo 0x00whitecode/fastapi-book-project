@@ -44,7 +44,6 @@ jobs:
         run: flyctl auth token --access-token ${{ secrets.FLY_API_TOKEN }}
 
       - name: Deploy to Fly.io
-        run: flyctl deploy --app basex --remote-only --org modibbo-adama-university-yola
-
+        run: flyctl deploy --app basex --remote-only 
       - name: Verify Deployment
         run: flyctl status --app basex
