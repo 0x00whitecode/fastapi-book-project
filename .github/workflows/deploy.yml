@@ -38,14 +38,24 @@ jobs:
         run: |
           curl -L https://fly.io/install.sh | sh
           echo "$HOME/.fly/bin" >> $GITHUB_PATH
-          export PATH="$HOME/.fly/bin:$PATH"  # Explicitly add to PATH
+          export PATH="$HOME/.fly/bin:$PATH"
 
       - name: Log in to Fly.io
         run: |
-          export PATH="$HOME/.fly/bin:$PATH"  # Ensure flyctl is in PATH
+          export PATH="$HOME/.fly/bin:$PATH"
           flyctl auth login --access-token ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Create Fly.io App (if it doesn't exist)
+        run: |
+          export PATH="$HOME/.fly/bin:$PATH"
+          flyctl apps create basex || echo "App already exists or another error occurred"
 
       - name: Deploy to Fly.io
         run: |
-          export PATH="$HOME/.fly/bin:$PATH"  # Ensure flyctl is in PATH
+          export PATH="$HOME/.fly/bin:$PATH"
           flyctl deploy --remote-only
+
+      - name: Verify Deployment
+        run: |
+          export PATH="$HOME/.fly/bin:$PATH"
+          flyctl status --app basex
