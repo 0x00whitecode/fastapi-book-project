@@ -13,17 +13,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# Use an official Nginx image as the base image for the final stage
-FROM nginx:alpine
+# Use an official Python runtime for the final stage
+FROM python:3.9-slim
+
+# Set the working directory
+WORKDIR /app
+
+# Copy dependencies and application from the builder stage
+COPY --from=builder /app /app
+
+# Install Nginx
+RUN apt update && apt install -y nginx && rm -rf /var/lib/apt/lists/*
 
 # Copy the Nginx configuration file
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Copy the FastAPI app from the builder stage
-COPY --from=builder /app /app
-
-# Expose port 80 for Nginx
-EXPOSE 80
+# Expose necessary ports
+EXPOSE 80 8000
 
 # Start Nginx and FastAPI
-CMD nginx -g "daemon off;" & uvicorn app.main:app --host 0.0.0.0 --port 8000
+CMD service nginx start && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
