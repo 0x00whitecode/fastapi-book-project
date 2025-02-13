@@ -48,14 +48,14 @@ jobs:
       - name: Create Fly.io App (if it doesn't exist)
         run: |
           export PATH="$HOME/.fly/bin:$PATH"
-          flyctl apps create basex || echo "App already exists or another error occurred"
+          flyctl apps create basex --org modibbo-adama-university-yola || echo "App already exists or another error occurred"
 
       - name: Deploy to Fly.io
         run: |
           export PATH="$HOME/.fly/bin:$PATH"
-          flyctl deploy --remote-only
+          flyctl deploy --remote-only --org modibbo-adama-university-yola
 
       - name: Verify Deployment
         run: |
           export PATH="$HOME/.fly/bin:$PATH"
-          flyctl status --app basex
+          flyctl status --app basex --org modibbo-adama-university-yola
