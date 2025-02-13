@@ -1,12 +1,12 @@
 # fly.toml
-app = "basex"  # Replace with your desired Fly.io app name
+app = "basex"
 
 [build]
-  image = "whitecod/fastapi-book-project"  # Replace with your Docker image name
+image = "whitecod/fastapi-book-project"
 
 [http_service]
-  internal_port = 8000
-  force_https = true
-  auto_stop_machines = true
-  auto_start_machines = true
-  min_machines_running = 1
+auto_start_machines = true
+auto_stop_machines = false  # Prevent Fly.io from stopping the machine
+force_https = true
+internal_port = 8000
+min_machines_running = 1  # Keep at least 1 machine running
