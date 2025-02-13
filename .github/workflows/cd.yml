@@ -56,7 +56,7 @@ jobs:
             git reset --hard origin/main
             git pull origin main
             
-            # ✅ Setup virtual environment & install dependencies
+            # ✅ Setup virtual environment & install dependencies buv
             python3 -m venv venv || exit 1
             source venv/bin/activate || exit 1
             python -m pip install --upgrade pip || exit 1
