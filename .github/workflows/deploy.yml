@@ -41,9 +41,11 @@ jobs:
           echo "$HOME/.fly/bin" >> $GITHUB_PATH
 
       - name: Log in to Fly.io
-        run: flyctl auth token --access-token ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl auth login --access-token ${{ secrets.FLY_API_TOKEN }}
 
       - name: Deploy to Fly.io
-        run: flyctl deploy --app basex --remote-only 
+        run: flyctl deploy --app basex --remote-only --org modibbo-adama-university-yola
+
       - name: Verify Deployment
         run: flyctl status --app basex
